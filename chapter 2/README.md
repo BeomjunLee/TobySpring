@@ -5,10 +5,158 @@
 만들어진 코드를 확신할 수 있게 해주고 변화에 유연하게 대처할 수 있게 도와주는 테스트 기능을 제공한다.
 <br><br>
 
-## 단위 테스트
-한꺼번에 많은 것을 몰아서 테스트하면 테스트 수행과정도 복잡해지고 오류가 발생했을 때 정확한 원인을 찾기가 힘들어진다.<br>
-따라서 테스트는 가능하면 작은 단위로 쪼개서 집중할 수 있어야 한다.<br>
--> 이렇게 작은 단위의 코드에 대해 테스트를 수행할 것을 단위 테스트 라고 한다.<br>
+## 테스트 전략
+- <strong>@SpringBootTest</strong> : 통합 테스트, 전체 테스트<br>
+부모 클래스 : IntegrationTest<br>
+주입되는 빈 : Bean 전체
 
-단위 테스트를 하는 이유는 개발자가 설계하고 만든 코드가 원래 의도한 대로 동작하는지 개발자 스스로 빨리 확인받기 위해서다.<br>
-이때 확인 대상과 조건이 간단하고 명확할 수록 좋다. 그래서 작은 단위로 테스트하는게 편리하다.
+- <strong>@WebMvcTest</strong> : 단위 테스트, Mvc 테스트<br>
+부모 클래스 : MockApiTest<br>
+주입되는 빈 : MVC 관련된 Bean
+
+- <strong>@DataJpaTest</strong> : 단위 테스트, Jpa 테스트<br>
+부모 클래스 : RepositoryTest<br>
+주입되는 빈 : JPA 관련 Bean
+
+## 통합 테스트
+- SpringBootTest는 단위테스트와 같이 기능 검증이 아닌, 스프링에서 실제 운영 환경과 같이 전체 플로우가 제대로 동작하는지 보기 위한 통합테스트이다.
+
+- @SpringBootTest가 동작하면 @SpringBootApplication을 찾아가서 모든 빈을 스캔한다. 즉, 모든 빈을 로드하는 통합 테스트이기 때문에 무겁다.
+
+- spring-boot-starter-test 의존성을 추가하면 테스트에 필요한 대부분의 라이브러리가 포함되어 있다. (JUnit, assertJ, mockito 등)
+
+## 단위 테스트
+- 한꺼번에 많은 것을 몰아서 테스트하면 테스트 수행과정도 복잡해지고 오류가 발생했을 때 정확한 원인을 찾기가 힘들어진다.
+  
+- 따라서 테스트는 가능하면 작은 단위로 쪼개서 집중할 수 있어야 한다.<br>
+-> 이렇게 작은 단위의 코드에 대해 테스트를 수행할 것을 단위 테스트 라고 한다.
+
+- 단위 테스트를 하는 이유는 개발자가 설계하고 만든 코드가 원래 의도한 대로 동작하는지 개발자 스스로 빨리 확인받기 위해서다.
+  
+- 이때 확인 대상과 조건이 간단하고 명확할 수록 좋다. 그래서 작은 단위로 테스트하는게 편리하다.
+  
+- 통합 테스트보다 빠르다.
+
+## 테스트 주도 개발 (TDD)
+만들고자 하는 기능의 내용을 담고 있으면서 만들어진 코드를 검증도 해줄 수 있도록 테스트 코드를 먼저 만들고<br>
+테스트를 성공하게 해주는 코드를 작성하는 방식의 개발 방법.<br>
+<br>
+
+## Junit Test 어노테이션
+```java
+public class Test {
+    @Test
+    void create1() {
+        System.out.println("create1");
+    }
+
+    @Test
+    void create2() {
+        System.out.println("create2");
+    }
+
+    @BeforeAll  //해당 메서드는 static 여야한다, 모든 테스트 메서드 보다 먼저 한번 실행된다.
+    static void beforeAll() {
+        System.out.println("@BeforeAll");
+    }
+
+    @AfterAll   //해당 메서드는 static 여야한다, 모든 테스트 메서드가 끝나고 한번 실행된다.
+    static void afterAll() {
+        System.out.println("@AfterAll");
+    }
+
+    @BeforeEach //각 테스트 메서드 전에 한번씩 실행된다.
+    void beforeEach() {
+        System.out.println("@BeforeEach");
+    }
+
+    @AfterEach  //각 테스트 메서드 실행 후 한번씩 실행된다.
+    void afterEach() {
+        System.out.println("@AfterEach");
+    }
+
+    @DisplayName("테스트 메서드 이름")  //테스트 클래스나 메서드의 이름을 정의할 수 있다.
+    @Disable    //테스트 클래스 또는 메서드를 비활성화 시킬수 있다.
+
+}
+```
+```
+@BeforeAll
+
+@BeforeEach
+create1
+@AfterEach
+
+
+@BeforeEach
+create2
+@AfterEach
+
+@AfterAll
+```
+<br>
+
+## Assert J
+메소드 채이닝을 지원해서 Junit5 보다 가독성이 좋다.
+```java
+//비교 검사
+@Test
+public void equal(){
+    String username = "이범준"
+    assertThat(username).isEqualTo("이범준");
+}
+
+//Object 속성 값 검사
+@Test
+public void extracting(){
+    User user1 = new User("A");
+    User user2 = new User("B");
+    User user3 = new User("C");
+
+    List<User> userList = new ArrayList<>();
+    userList.add(user1);
+    userList.add(user2);
+    userList.add(user3);
+
+    assertThat(user).extracting("name").isEqualTo("A"); //객체 프로퍼티 추출해서 검사
+
+    assertThat(userList).extracting("name")
+                        .containsExactly("A", "B", "C");  //리스트의 프로퍼티를 추출해서 검사
+
+    assertThat(list).filteredOn(user -> user.getName()  //필터링 가능
+                    .contains("A"))
+                    .containsOnly("A");
+}
+
+@Test
+public void string(){
+    String str = "Test String";
+
+    //간단하게 문자열테스트
+    assertThat(str).startsWith("Test").endsWith("String").contains("e"); 
+}
+
+@Test
+public void exception(){
+    assertThatThrownBy(() -> {
+        User user = userService.findByUsername("이범준");
+    }).isInstanceOf(UsernameNotFoundException.class)
+        .hasMessageContaining("회원을 찾을수 없습니다."); //exception 의 메세지 검사
+}
+})
+ 
+```
+
+### @MockBean
+Mock 객체를 빈으로 등록해 사용할 수 있다.<br>
+-> 가짜 객체를 만들어 테스트 시간을 절감
+```java
+@MockBean
+private UserService userService;
+```
+
+### @Transactional
+테스트 완료후 자동으로 Rollback 처리한다.
+
+### @ActiveProfiles
+원하는 프로파일 환경 값으로 설정할 수 있다.
