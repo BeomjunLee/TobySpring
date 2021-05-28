@@ -6,3 +6,9 @@
 
 ### Chapter 2
 [챕터2 테스트](/chapter%202/README.md)
+
+### Chapter 3
+생략
+
+### Chapter 4
+[챕터4 예외](/chapter%204/README.md)
