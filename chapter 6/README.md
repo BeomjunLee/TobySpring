@@ -410,6 +410,7 @@ public class TransactionHandler implements FactoryBean<Object>{
 ## AOP 가 @Transactional 이라는 기능을 지원해준다
 <img src="https://user-images.githubusercontent.com/69130921/120891340-0a216000-c643-11eb-8efe-c79b0fa24f73.png"><br>
 공통로직인 트랜잭션에 집중 안하고 핵심로직인 비지니스 로직에 집중할 수 있게 해준다. 이러한 개념이 AOP 이다<br>
+
 ```java
 //어노테이션을 사용할 대상을 지정(메서드, 클래스, 인터페이스)
 @Target({ElementType.TYPE, ElementType.METHOD}) 
@@ -420,21 +421,33 @@ public class TransactionHandler implements FactoryBean<Object>{
 @Inherited //상속을 통해서도 어노테이션 정보를 받을 수 있다
 @Documented
 public @interface Transactional {
+    
+    @AliasFor("transactionManager")
+    String value() default "";
+
+    @AliasFor("value")
+    String transactionManager() default "";
+
+    String[] label() default {};
+
+    Propagation propagation() default Propagation.REQUIRED;
+
+    Isolation isolation() default Isolation.DEFAULT;
+
+    int timeout() default TransactionDefinition.TIMEOUT_DEFAULT;
+
+    String timeoutString() default "";
+
+    boolean readOnly() default false;
+
+    Class<? extends Throwable>[] rollbackFor() default {};
+
+    String[] rollbackForClassName() default {};
+
+    Class<? extends Throwable>[] noRollbackFor() default {};
+
+    String[] noRollbackForClassName() default {};
+}
 ```
 이런 설정들이 default 값으로 되어있다.
-```java
-@AliasFor("transactionManager")
-	String value() default "";
-	@AliasFor("value")
-	String transactionManager() default "";
-	String[] label() default {};
-	Propagation propagation() default Propagation.REQUIRED;
-	Isolation isolation() default Isolation.DEFAULT;
-	int timeout() default TransactionDefinition.TIMEOUT_DEFAULT;
-	String timeoutString() default "";
-	boolean readOnly() default false;
-	Class<? extends Throwable>[] rollbackFor() default {};
-	String[] rollbackForClassName() default {};
-	Class<? extends Throwable>[] noRollbackFor() default {};
-	String[] noRollbackForClassName() default {};
-```
+
