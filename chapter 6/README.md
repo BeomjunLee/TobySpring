@@ -1,8 +1,8 @@
-## AOP
-AOP 는 서비스 추상화에 더불어 스프링의 3대 기술중 하나이다.
+# AOP
+AOP 는 서비스 추상화에 더불어 스프링의 3대 기술중 하나이다.<br><br>
 
 ## 트랜잭션 코드의 분리
-트랜잭션과 비지니스 로직이 공존하는 메서드
+트랜잭션과 비지니스 로직이 공존하는 메서드이다 (쭉 최적화해냐갈 예정이다)
 ```java
 public void upgradeLevels() throws Exception{
 
@@ -106,21 +106,8 @@ public class UserController{
 <img src="https://user-images.githubusercontent.com/69130921/120837468-b1e65180-c5a1-11eb-8a21-e54f6e2242da.png"><br>
 클라이언트(컨트롤러) 의 UserService 는 UserServiceTx 를 주입받게하고 UserServiceTx 의 UserService 는 UserServiceImpl 을 주입받게 해주면 된다.<br><br>
 
-### 현재는 이렇게 @Transactional 이라는 AOP 를 지원해준다
-따라서 공통로직인 트랜잭션에 집중 안하고 핵심로직인 비지니스 로직에 집중할 수 있게 해준다. 이러한 개념이 AOP 이다<br>
-```java
-@Service
-public class UserService{
 
-    ...
-
-    @Transactional
-    public void upgradeLevels(){
-
-    }
-}
-```
-
+<br><br>
 ## 단위 테스트
 가장 편하고 좋은 테스트는 가능한 작은 단위로 쪼개서 하는 단위 테스트이다. 작은 단위의 테스트가 좋은 이유는 테스트가 실패했을 경우 원인을 찾기 쉽기 때문이다.<br>
 
@@ -170,7 +157,7 @@ thenReturn() 을 통해 원하는 값을 return 해줄 수 있다.
         assertThat(findMember).usingRecursiveComparison().isEqualTo(member);
     }
 
-     @Test
+    @Test
     @DisplayName("회원 정보 조회 실패")
     public void findMemberFail() throws Exception{
         //given
@@ -181,7 +168,161 @@ thenReturn() 을 통해 원하는 값을 return 해줄 수 있다.
         }).isInstanceOf(UsernameNotFoundException.class).hasMessageContaining("해당되는 유저를 찾을수 없습니다");
     }
 ```
+<br><br>
+
+## 데코레이터 패턴
+데코레이션 패턴이란 객체의 결합을 통해 기능을 동적으로 확장 확장할 수 있게 해주는 패턴이다.<br>
+
+ex) 데코레이터 패턴 예시<br>
+<img src="https://user-images.githubusercontent.com/69130921/120885870-1ea32f80-c626-11eb-85ed-b90062b2e633.png"><br>
+
+앞에서 UserServiceImpl 과 UserServiceTx 도 데코레이터 패턴을 이용한 예시이다.<br>
+필요하다면 트랜잭션 외에도 다른 기능을 부여하는 데코레이터를 만들어서 UserServiceTx 와 UserServiceImpl 사이에 추가해줄 수 있다.<br>
+
+## 프록시 패턴
+프록시 패턴은 어떤 객체에 대한 접근을 제어하는 용도로 대리인이나 대변인에 해당하는 객체를 제공하는 패턴이다.<br>
+프록시는 기존 코드에 영향을 주지 않고 타깃의 기능을 확장하거나 접근 방법을 제어할 수 있다.<br>
+하지만 개발자들은 매번 새로운 클래스를 만들고, 인터페이스에 모든 메서드들을 일일히 구현해서 위임해야하는 작업들이 번거롭기 때문에 지향하지 않는다.<br>
+```java
+@Component
+public class UserServiceTx implements UserService{
+
+    private UserService userService; //타깃 오브젝트
+
+    public void add(User user){
+        this.userService.add(user); //메서드 구현과 위임
+    }
+
+    @Autowired
+    public UserServiceTx(@Qualifier("userServiceImpl") UserService userService){
+        this.userService = userService;
+    }
+
+    public void upgradeLevels(){
+        //부가기능 수행
+        TransactionStatus status = this.transactionManager.getTransaction(new DefaultTransactionDefinition());
+    try{
+       
+
+        userService.upgradeLevels();    //위임
+
+
+    //부가기능 수행
+        this.transationManager.commit(status);
+    }catch (Exception e){
+        this.transactionManager.rollback(status);
+        throw e;
+    }
+    }
+}
+```
 <br>
 
-## 다이내믹 프록시와 팩토리 빈
-### 프록시와 프록시 패턴, 데코레이터 패턴
+## 다이내믹 프록시
+이러한 프록시의 단점들을 보완해 몇 가지 API 를 이용해 프록시처럼 동작하는 오브젝트를 다이내믹하게 생성할 수 있다.<br>
+
+다이내믹 프록시는 리플렉션 기능을 이용해서 프록시를 만들어준다.<br>
+리플렉션이란 구체적인 클래스 타입을 몰라도 해당 클래스의 메서드, 타입, 변수 들을 알 수 있도록 해주는 Java API 이다.<br>
+
+다이내믹 프록시로부터 요청을 전달받으려면 InvocationHandler 를 구현해야 한다. (메서드는 invoke() 하나 뿐)<br><br>
+
+## UserServiceImpl, UserServiceTx 의 문제점
+이렇게 인터페이스를 통해 트랜잭션을 분리했지만 클라이언트가 UserServiceImpl 이라는 클래스를 직접 사용해버리면 트랜잭션이 적용되지 않는다.<br>
+그렇기 때문에 클라이언트는 인터페이스를 통해서만 핵심기능을 사용할 수 있게 하고 부가기능 또한 같은 인터페이스를 사용해서 끼어들어야된다.<br>
+
+즉 사용자는 자신이 핵심기능을 가진 클래스를 사용한다고 생각하지만 사실은 부가기능을 통해 핵심기능을 이용하게된다.<br>
+<img src="https://user-images.githubusercontent.com/69130921/120885363-768c6700-c623-11eb-821b-09e07f8defd7.png"><br><br>
+
+## UserServiceTx 다이내믹 프록시 적용
+다이내믹 프록시를 이용해 UserServiceTx 를 변경해 볼 것 이다.
+```java
+public class TransactionHandler implements InvocationHandler{
+    
+    private Object target; //부가기능을 제공할 타깃 오브젝트 (어떤 타입이든 적용 가능)
+    private PlatformTransactionManager transactionManager;  //트랜잭션 기능을 제공
+    private String pattern; //트랜잭션을 적용할 메서드 이름 패턴
+    
+    public void setTarget(Object target) {
+        this.target = target;
+    }
+
+    public void setTransactionManager(PlatformTransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
+    }
+
+    public void setPattern(String pattern) {
+        this.pattern = pattern;
+    }
+
+    //트랜잭션 적용 대상 메서드를 선별해서 트랜잭션 경계설정 기능을 부여해준다.
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable{
+        
+        if(method.getName().startWith(pattern)){
+            return invokeInTransaction(method, args);
+        }else{
+            return method.invoke(target, args);
+        }
+    }
+    
+    //트랜잭션을 시작하고 타깃 오브젝트의 메서드를 호출한 후 트랜잭션 commit or rollback
+    public Object invokeInTransaction(Method method, Object[] args) throws Throwable{
+
+        TransactionStatus status = this.transactionManager.getTransaction(new DefaultTransactionDefinition());
+
+        try{
+            Object ret = method.invoke(target, args);
+            this.transactionManager.commit(status);
+            return yet;
+        } catch (InvocationTargetException e){
+            this.transactionManager.rollback(status);
+            throw e.getTargetException();
+        }
+    }
+}
+```
+<br>
+
+### 다이내믹 프록시 적용후 테스트
+```java
+@Test
+public void upgradeDynamicProxyTest() throws Exception{
+    ...
+    TransactionHandler txHandler = new TransactionHandler();
+    txHandler.setTarget(UserService);
+    txHandler.setTransactionManager(transactionManager);
+    txHandler.setPattern("upgradeLevels");
+    
+    UserService txUserService = (UserService)Proxy.newProxyInstance(
+        getClass(), getClassLoader(), new Class[], {UserService.class }, txHandler);
+    )
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 현재는 이렇게 @Transactional 이라는 AOP 를 지원해준다
+따라서 공통로직인 트랜잭션에 집중 안하고 핵심로직인 비지니스 로직에 집중할 수 있게 해준다. 이러한 개념이 AOP 이다<br>
+```java
+@Service
+public class UserService{
+
+    ...
+
+    @Transactional
+    public void upgradeLevels(){
+
+    }
+}
+```
