@@ -147,16 +147,66 @@ public void exception(){
  
 ```
 
-### @MockBean
-Mock 객체를 빈으로 등록해 사용할 수 있다.<br>
--> 가짜 객체를 만들어 테스트 시간을 절감
-```java
-@MockBean
-private UserService userService;
-```
-
 ### @Transactional
 테스트 완료후 자동으로 Rollback 처리한다.
 
 ### @ActiveProfiles
 원하는 프로파일 환경 값으로 설정할 수 있다.
+<br><br>
+
+## 단위 테스트 vs 통합 테스트 가이드라인
+- 항상 단위 테스트를 먼저 고려해야한다.
+- 단위 테스트시 Mockito 를 사용해 외부와의 의존관계를 모두 차단한다면 빠르게 테스트를 할 수 있다.
+- 외부 리소스를 사용해야만 하는 가능한 테스트는 통합 테스트로 만든다.
+- 여러 개의 단위가 의존관계를 가지고 동작할 때를 위한 통합 테스트도 필요한데 단위 테스트를 잘 짜놨다면 그만큼 통합 테스트의 부담도 줄어든다.
+- 단위 테스트로 만들기 너무 복잡한 코드라면 처음부터 통합 테스트를 고려해봐도 된다. 이 때 통합 테스트의 코드들 중에서 가능한 많은 부분을 단위 테스트로 짜두면 좋다.
+  
+
+## Mockito
+@RunWith(MockitoJunitRunner.class)
+Mockito에서 제공하는 목객체를 사용하기 하기위해 위와같은 어노테이션을 테스트클래스에 달아준다.
+
+@InjectMocks라는 어노테이션이 존재하는데, @Mock이 붙은 목객체를 @InjectMocks이 붙은 객체에 주입시킬 수 있다.<br>
+(물론 Mock 이라는 테스트용 빈 객체가 할당된다)
+```java
+@ExtendWith(MockitoExtension.class)
+public class MemberServiceTest {
+
+    @InjectMocks
+    private MemberService memberService;
+
+    @Mock
+    private MemberRepository memberRepository;
+
+    ...
+}
+```
+when() 으로 memberRepository.findByUsername(...) 이 호출됐을 때 를 지정해줄 수 있고<br> 
+thenReturn() 을 통해 원하는 값을 return 해줄 수 있다.
+```java
+    @Test
+    @DisplayName("회원 정보 조회")
+    public void findMember() throws Exception{
+        //given
+        when(memberRepository.findByUsername(any())).thenReturn(Optional.of(member));
+
+        //when
+        Member findMember = memberService.findMemberByUsername(any());
+
+        //then
+        assertThat(findMember).usingRecursiveComparison().isEqualTo(member);
+    }
+
+    @Test
+    @DisplayName("회원 정보 조회 실패")
+    public void findMemberFail() throws Exception{
+        //given
+        when(memberRepository.findByUsername(any())).thenReturn(Optional.empty());
+        //when, then
+        assertThatThrownBy(() -> {
+            memberService.findMemberByUsername(any());
+        }).isInstanceOf(UsernameNotFoundException.class).hasMessageContaining("해당되는 유저를 찾을수 없습니다");
+    }
+```
+<br><br>
+
